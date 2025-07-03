@@ -1,0 +1,5 @@
+C:/Users/genev/Desktop/ServerManager/cmake-build-debug/CMakeFiles/ServerManager.dir
+C:/Users/genev/Desktop/ServerManager/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/genev/Desktop/ServerManager/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+C:/Users/genev/Desktop/ServerManager/cmake-build-debug/CMakeFiles/ServerManager_autogen_timestamp_deps.dir
+C:/Users/genev/Desktop/ServerManager/cmake-build-debug/CMakeFiles/ServerManager_autogen.dir
