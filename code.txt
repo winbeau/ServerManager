@@ -1,0 +1,2728 @@
+CMakeLists.txt:
+
+cmake_minimum_required(VERSION 3.30)
+project(ServerManager)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+set(CMAKE_PREFIX_PATH "D:/QtStructure/6.5.3/mingw_64")
+set(SRC_DIR "./src")  # 源文件目录
+set(RES_FILES "${CMAKE_SOURCE_DIR}/resources/resources.qrc") # 资源文件
+
+file(GLOB FILES
+        "${SRC_DIR}/*.*" # 所有源文件
+)
+
+find_package(Qt6 COMPONENTS
+        Core
+        Gui
+        Widgets
+        Network     # 查找网络模块
+        SerialPort  # 查找串口模块
+        Sql         # 查找数据库模块
+        Charts      # 查找图表模块
+        REQUIRED
+)
+
+qt_add_resources(RESOURCES_SRCS ${RES_FILES})
+
+add_executable(ServerManager
+        ${FILES}              # 添加所有源文件
+        ${RESOURCES_SRCS}     # 添加资源文件
+)
+
+target_link_libraries(ServerManager
+        Qt::Core
+        Qt::Gui
+        Qt::Widgets
+        Qt::Network     # 链接网络模块
+        Qt::SerialPort  # 链接串口模块
+        Qt::Sql         # 链接数据库模块
+        Qt::Charts      # 链接图表模块
+)
+
+if (WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(DEBUG_SUFFIX)
+    if (MSVC AND CMAKE_BUILD_TYPE MATCHES "Debug")
+        set(DEBUG_SUFFIX "d")
+    endif ()
+
+    set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
+    if (NOT EXISTS "${QT_INSTALL_PATH}/bin")
+        set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
+        if (NOT EXISTS "${QT_INSTALL_PATH}/bin")
+            set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
+        endif ()
+    endif ()
+
+    if (EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins/platforms/")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy
+                "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins/platforms/")
+    endif ()
+
+    foreach (QT_LIB Core Gui Widgets Network SerialPort Sql Charts)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy
+                "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}${DEBUG_SUFFIX}.dll"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    endforeach (QT_LIB)
+
+    # 手动添加SQL插件目录
+    set(QT_PLUGINS_DIR "${QT_INSTALL_PATH}/plugins")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${QT_PLUGINS_DIR}"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins"
+    )
+endif ()
+
+
+main.cpp：
+
+#include "mainwindow.h"
+#include <QApplication>
+#include <QFile>
+
+int main(int argc, char *argv[]) {
+    QApplication app(argc, argv);
+
+    app.setPalette(QPalette(Qt::white));
+    QFile file(":/style.qss");
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+        QString styleSheet = file.readAll();
+        app.setStyleSheet(styleSheet);
+        file.close();
+    }
+
+    mainwindow w;
+    w.show();
+
+    return QApplication::exec();
+}
+
+mainwindow.h:
+
+#ifndef SERVERMANAGER_MAINWINDOW_H
+#define SERVERMANAGER_MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QMessageBox>
+#include <QTcpSocket>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlTableModel>
+#include <QStyledItemDelegate>
+#include <QApplication>
+#include <QDebug>
+#include "addwindow.h"
+#include "boardwindow.h"
+#include "imitatewindow.h"
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class mainwindow; }
+QT_END_NAMESPACE
+
+class mainwindow : public QMainWindow {
+Q_OBJECT
+
+public:
+    explicit mainwindow(QWidget *parent = nullptr);
+
+    ~mainwindow() override;
+
+    void setStaTableStyle();
+
+
+private slots:
+
+    void on_allButton_clicked();
+
+    void on_dashButton_clicked();
+
+    void on_addPushButton_clicked();
+
+    void on_distriButton_clicked();
+
+    void on_imitateButton_clicked();
+
+private:
+    Ui::mainwindow *ui;
+    QTcpSocket *socket;
+    QSqlDatabase db;
+    QSqlTableModel *m, *m2;
+};
+
+class MyTableStyle : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+
+private:
+    void drawPercent(QPainter *painter, const QStyleOptionViewItem &option, double percent) const;
+
+    void drawLeftText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+
+    void drawProgressBar(QPainter *painter, const QStyleOptionViewItem &option, double percent) const;
+
+};
+
+
+#endif //SERVERMANAGER_MAINWINDOW_H
+
+addwindow.h:
+
+#ifndef SERVERMANAGER_ADDWINDOW_H
+#define SERVERMANAGER_ADDWINDOW_H
+
+#include <QWidget>
+#include <QMainWindow>
+#include <QTcpSocket>
+#include <QSqlQuery>
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class addwindow; }
+QT_END_NAMESPACE
+
+class addwindow : public QMainWindow {
+Q_OBJECT
+
+public:
+    explicit addwindow(QTcpSocket *s, QWidget *parent = nullptr);
+
+    ~addwindow() override;
+
+private slots:
+    void on_saveButton_clicked();
+
+    void on_clearButton_clicked();
+
+private:
+    Ui::addwindow *ui;
+    QTcpSocket *socket;
+};
+
+
+#endif //SERVERMANAGER_ADDWINDOW_H
+
+boardwindow.h:
+
+#ifndef SERVERMANAGER_BOARDWINDOW_H
+#define SERVERMANAGER_BOARDWINDOW_H
+
+#include <QMainWindow>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QSqlTableModel>
+#include <QVector>
+#include <QString>
+#include <QTime>
+#include <QTImer>
+#include <QRandomGenerator>
+#include <set>
+#include <queue>
+
+#include <QChart>
+#include <QChartView>
+#include <QPieSeries>
+#include <QPieSlice>
+
+#define CEIL       0.8
+#define AVAIL      (0.98 + QRandomGenerator::global()->generateDouble() * 0.02 - 0.01)
+#define OPERATE(x) ((int)(x * AVAIL))
+#define CEIL_OP(x)    ((int)(x * CEIL))
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class boardwindow; }
+QT_END_NAMESPACE
+
+class boardwindow : public QMainWindow {
+Q_OBJECT
+
+public:
+    explicit boardwindow(QWidget *parent = nullptr);
+
+    ~boardwindow() override;
+
+    void initTable();
+
+    void initDbData();
+
+    void initTaskChart();
+
+    void initMemoChart();
+
+    void initGpuChart();
+
+private:
+    QTimer *timer500;
+    QTimer *timer1000;
+    int taskCnt, finishCnt, failedCnt, ingCnt, todoCnt;
+    int allMemo, freeMemo, occupyMemo;
+    int allGpu, freeGpu, occupyGpu;
+    bool fla2000TC, fla2000MC, fla2000GC; // 2000ms图表刷新flag
+    QChart *taskChart, *memoChart, *gpuChart;
+    QPieSeries *taskSeries, *memoSeries, *gpuSeries;
+    struct Task {
+        QString id;
+        int cpu;
+        int gpu;
+        int disk;
+        int bandwidth;
+        time_t start;
+        time_t during;
+        bool status;
+    };
+    struct cmpDuring {
+        bool operator()(const Task& a, const Task& b) const {
+            return a.during > b.during; // 小顶堆
+        }
+    };
+    struct cmpStart {
+        bool operator()(const Task& a, const Task& b) const {
+            return a.start > b.start; // 小顶堆
+        }
+    };
+    struct Server {
+        QString id;
+        QString ip;
+        int port;
+        int cpu;
+        int gpu;
+        int disk;
+        int bandwidth;
+        int free_cpu;
+        int free_gpu;
+        int free_disk;
+        int free_bandwidth;
+        bool status;
+        time_t last;
+        std::priority_queue<Task, std::vector<Task>, cmpDuring> tasks;
+    };
+    Ui::boardwindow *ui;
+    QSqlDatabase db;
+    QSqlTableModel *m3;
+    QVector<Task> taskArray;
+    QVector<Task> failedArray;
+    QVector<Server> serverArray;
+    QVector<Server> workingArray;
+    std::priority_queue<Task, std::vector<Task>, cmpStart> todoTasks;
+
+private slots:
+    void initDistributeTask(QVector<Task> &taskArr);
+
+    void timeoutSlot500();
+
+    void timeoutSlot2000();
+
+    void updateTaskChartData();
+
+    void updateTaskChartSlot();
+
+    void updateMemoChartData();
+
+    void updateMemoChartSlot();
+
+    void updateGpuChartData();
+
+    void updateGpuChartSlot();
+
+    void updateDataSlot();
+
+public:
+    static void activateServer(Server &ser);
+
+    static void activateTask(const Task &tas);
+};
+
+
+#endif //SERVERMANAGER_BOARDWINDOW_H
+
+
+imitatewindow.h:
+
+#ifndef SERVERMANAGER_IMITATEWINDOW_H
+#define SERVERMANAGER_IMITATEWINDOW_H
+
+#include <QMainWindow>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QString>
+#include <QDebug>
+#include <QRandomGenerator>
+
+#define LENGTH 10
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class imitatewindow; }
+QT_END_NAMESPACE
+
+class imitatewindow : public QMainWindow {
+Q_OBJECT
+
+public:
+    explicit imitatewindow(QWidget *parent = nullptr);
+
+    ~imitatewindow() override;
+
+    QString generateRandomID();
+
+    QString generateRandomIP();
+
+    int insertRandomServer();
+
+    int insertRandomTask();
+
+private slots:
+    void on_clearButton_clicked();
+
+    void on_clcButton_clicked();
+
+    void on_importButton_clicked();
+
+private:
+    Ui::imitatewindow *ui;
+    int serverNum;
+    int taskNum;
+};
+
+
+#endif //SERVERMANAGER_IMITATEWINDOW_H
+
+mainwindow.cpp:
+
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include "addwindow.h"
+
+mainwindow::mainwindow(QWidget *parent) :
+        QMainWindow(parent),
+        ui(new Ui::mainwindow) {
+    ui->setupUi(this);
+    ui->allWidget->hide();
+// @distriButton变色
+//    connect(board, &boardwindow::destroyed, this, [this]() {
+//        qDebug() << "Board window closed";
+//    });
+
+    db = QSqlDatabase::addDatabase("QMYSQL");
+
+    db.setDatabaseName("servers");
+    db.setHostName("localhost");
+    db.setUserName("root");
+    db.setPassword("@Geralt123");
+
+    if (db.open()) {
+        qDebug() << "database connected";
+
+        m = new QSqlTableModel;
+        m->setTable("sta");
+        m->select();
+
+        /// 样式自写
+        setStaTableStyle();
+
+    } else {
+        qDebug() << "database not connected";
+        qDebug() << db.lastError().text();
+    }
+
+    m2 = new QSqlTableModel;
+    m2->setTable("sta");
+    m2->select();
+    ui->allTableView->setModel(m2);
+    ui->allTableView->verticalHeader()->setVisible(false);
+
+}
+
+mainwindow::~mainwindow() {
+    delete ui;
+}
+
+void mainwindow::setStaTableStyle() {
+    ui->tableView->setModel(m);
+    ui->tableView->setItemDelegate(new MyTableStyle(this));
+    ui->tableView->verticalHeader()->setVisible(false);
+    ui->tableView->horizontalHeader()->setVisible(false);
+    ui->tableView->setColumnWidth(0, 50);
+    ui->tableView->setColumnWidth(1, 150);
+    ui->tableView->setColumnWidth(2, 80);
+    ui->tableView->setColumnHidden(3, true);
+    ui->tableView->setColumnHidden(4, true);
+    ui->tableView->setColumnHidden(5, true);
+    ui->tableView->setColumnHidden(6, true);
+    ui->tableView->setColumnHidden(7, true);
+    ui->tableView->setColumnHidden(8, true);
+    ui->tableView->setColumnHidden(9, true);
+    ui->tableView->setColumnHidden(10, true);
+    ui->tableView->setColumnHidden(11, true);
+    ui->tableView->setColumnHidden(12, true);
+    ui->tableView->setColumnHidden(13, true);
+}
+
+void mainwindow::on_addPushButton_clicked() {
+    addwindow *add = new addwindow(socket, this);
+    add->setAttribute(Qt::WA_DeleteOnClose); // 关闭窗口时自动删除对象
+
+    connect(add, &addwindow::destroyed, this, [this]() {
+        m->select();
+    }); // 信号与槽
+
+    add->show();
+
+}
+
+void mainwindow::on_allButton_clicked() {
+    m2->select(); //刷新表格
+
+    ui->pageWidget->hide();
+    ui->allWidget->show();
+
+    ui->allButton->setStyleSheet(
+            "QPushButton {"
+            "    color: rgb(0, 0, 0);"
+            "    background-color: rgb(91, 221, 138);"
+            "    border-color: rgb(91, 221, 138);"
+            "    border-radius: 15px;"
+            "    border-style: solid;"
+            "    border-width: 1px;"
+            "}"
+    );
+
+    ui->dashButton->setStyleSheet(
+            "QPushButton {"
+            "    alignment: center;"
+            "    max-height: 35px;"
+            "    min-height: 35px;"
+            "    color: rgb(255, 255, 255);"
+            "    font:200 20px;"
+            "    background-color: rgb(46, 51, 57);"
+            "    border: 1px solid rgb(46, 51, 57);"
+            "    border-radius: 15px;"
+            "}"
+    );
+
+}
+
+void mainwindow::on_dashButton_clicked() {
+    m->select(); //刷新表格
+
+    ui->allWidget->hide();
+    ui->pageWidget->show();
+
+    ui->dashButton->setStyleSheet(
+            "QPushButton {"
+            "    color: rgb(0, 0, 0);"
+            "    background-color: rgb(91, 221, 138);"
+            "    border-color: rgb(91, 221, 138);"
+            "    border-radius: 15px;"
+            "    border-style: solid;"
+            "    border-width: 1px;"
+            "}"
+    );
+
+    ui->allButton->setStyleSheet(
+            "QPushButton {"
+            "    alignment: center;"
+            "    max-height: 35px;"
+            "    min-height: 35px;"
+            "    color: rgb(255, 255, 255);"
+            "    font:200 20px;"
+            "    background-color: rgb(46, 51, 57);"
+            "    border: 1px solid rgb(46, 51, 57);"
+            "    border-radius: 15px;"
+            "}"
+    );
+}
+
+void mainwindow::on_distriButton_clicked() {
+    ui->distriButton->setStyleSheet(
+            "QPushButton {"
+            "    alignment: center;"
+            "    max-height: 35px;"
+            "    min-height: 35px;"
+            "    color: rgb(255, 255, 255);"
+            "    font:200 20px;"
+            "    background-color: rgb(114, 214, 214);"
+            "    border: 1px solid rgb(114, 214, 214);"
+            "    border-radius: 15px;"
+            "}"
+    );
+
+    boardwindow *board = new boardwindow(this);
+    board->setAttribute(Qt::WA_DeleteOnClose); // 关闭窗口时自动删除对象
+
+    board->show();
+}
+
+void mainwindow::on_imitateButton_clicked() {
+    imitatewindow *imitate = new imitatewindow;
+    imitate->setAttribute(Qt::WA_DeleteOnClose); // 关闭窗口时自动删除对象
+    imitate->show();
+}
+
+void MyTableStyle::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
+    int cpu = index.sibling(index.row(), 3).data().toInt();          // CPU列索引
+    int free_cpu = index.sibling(index.row(), 7).data().toInt();     // free_cpu列索引
+    double percent = (cpu - free_cpu) * 100.0 / cpu;
+    switch (index.column()) {
+        case 0: {
+            drawPercent(painter, option, percent);
+        }
+            break;
+        case 1: {
+            drawLeftText(painter, option, index);
+        }
+            break;
+        case 2: {
+            drawProgressBar(painter, option, percent);
+        }
+            break;
+    }
+}
+
+void MyTableStyle::drawPercent(QPainter *painter, const QStyleOptionViewItem &option, double percent) const {
+    // 绘制圆角背景
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    QRect rect = option.rect.adjusted(5, 5, -5, -5); // 控制边距大小
+    QPainterPath path;
+    path.addRoundedRect(rect, 5, 5);  // 圆角半径3px
+    if (percent < 80) painter->fillPath(path, QColor(91, 221, 138));  // 背景色 -绿色
+    else painter->fillPath(path, QColor(241, 13, 72)); // 背景色 -红色
+    // 绘制百分比
+    QFont font = painter->font();
+    font.setWeight(QFont::Bold); // 设置粗体
+    painter->setFont(font);
+    painter->setPen(Qt::white);
+    painter->drawText(rect, Qt::AlignCenter, QString::number(percent, 'f', 1) + "%");
+    painter->restore();
+}
+
+void MyTableStyle::drawLeftText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
+    QRect rect = option.rect.adjusted(0, 6, 0, 0); //
+    painter->drawText(rect, Qt::AlignLeft, // id在第0行列
+                      index.sibling(index.row(), 0).data().toString());
+}
+
+void MyTableStyle::drawProgressBar(QPainter *painter, const QStyleOptionViewItem &option, double percent) const {
+    // 绘制圆角背景
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    QRect rect = option.rect.adjusted(5, 8, -5, -8); // 控制边距大小
+    QPainterPath path;
+    path.addRoundedRect(rect, 3, 3);  // 圆角半径3px
+    painter->fillPath(path, QColor(240, 240, 240));  // 背景色
+
+    // 绘制进度条
+    QRect progressRect = rect.adjusted(0, 0, -rect.width() * (100 - percent) / 100, 0);
+    QPainterPath progressPath;
+    progressPath.addRoundedRect(progressRect, 3, 3);
+    painter->fillPath(progressPath, QColor(100, 180, 255));  // 进度条颜色
+}
+
+addwindow.cpp:
+
+#include "addwindow.h"
+#include "ui_addwindow.h"
+
+addwindow::addwindow(QTcpSocket *s, QWidget *parent) :
+        QMainWindow(parent), ui(new Ui::addwindow) {
+    ui->setupUi(this);
+    socket = s;
+}
+
+addwindow::~addwindow() {
+    delete ui;
+}
+
+void addwindow::on_saveButton_clicked() {
+    QString _id = ui->idLineEdit->text();
+    QString _ip = ui->ipLineEdit->text();
+    QString _port = ui->portLineEdit->text();
+
+    QString sql = QString("INSERT INTO sers (id, ip, port) \
+    VALUES ('%1', '%2', '%3');").arg(_id).arg(_ip).arg(_port.toInt());
+
+    QSqlQuery query;
+    if (query.exec("USE servers;" + sql)) {
+        qDebug() << "data added successfully";
+    } else {
+        qDebug() << "data not added";
+    }
+
+    this->close();
+}
+
+void addwindow::on_clearButton_clicked() {
+    ui->idLineEdit->clear();
+    ui->ipLineEdit->clear();
+    ui->portLineEdit->clear();
+}
+
+
+boardwindow.cpp:
+
+#include "boardwindow.h"
+#include "ui_boardwindow.h"
+
+#define AI 1
+
+boardwindow::boardwindow(QWidget *parent) :
+        QMainWindow(parent), fla2000TC(true),
+        ui(new Ui::boardwindow) {
+    ui->setupUi(this);
+
+    /// 初始化更新信号
+    timer500 = new QTimer;
+    timer500->start(500);
+    connect(timer500, &QTimer::timeout, this, &boardwindow::timeoutSlot500);
+
+    timer1000 = new QTimer;
+    timer1000->start(1000);
+    connect(timer1000, &QTimer::timeout, this, &boardwindow::timeoutSlot2000);
+
+    /// 初始化表格
+    initTable();
+
+    /// 初始化数据
+    initDbData();
+
+    /// 初始化任务图表
+    taskChart = new QChart;
+    taskSeries = new QPieSeries;
+    initTaskChart();
+
+    /// 初始化内存图表
+    memoChart = new QChart;
+    memoSeries = new QPieSeries;
+    initMemoChart();
+
+    /// 初始化显存图表
+    gpuChart = new QChart;
+    gpuSeries = new QPieSeries;
+    initGpuChart();
+
+    /// 任务首次分配
+    initDistributeTask(taskArray);
+}
+
+boardwindow::~boardwindow() {
+    timer500->stop();
+    timer1000->stop();
+
+    delete ui;
+    delete timer500;
+    delete timer1000;
+    delete m3;
+    delete taskChart;
+    delete memoChart;
+    delete gpuChart;
+    delete taskSeries;
+    delete memoSeries;
+    delete gpuSeries;
+}
+
+#if AI
+
+void boardwindow::initDistributeTask(QVector<Task> &taskArr) {
+    for (auto &task: taskArr) {
+        int flag = 0;
+        // 修复1：添加资源有效性检查
+        if (task.cpu <= 0 || task.gpu <= 0 || task.disk <= 0 || task.bandwidth <= 0) {
+            qDebug() << "Invalid task requirements:" << task.id;
+            continue;
+        }
+
+        // 现有工作服务器分配
+        for (auto &server: workingArray) {
+            // 修复2：添加服务器状态检查
+            if (server.status &&
+                server.cpu - server.free_cpu + task.cpu <= CEIL_OP(server.cpu) &&
+                server.gpu - server.free_gpu + task.gpu <= CEIL_OP(server.gpu) &&
+                server.disk - server.free_disk + task.disk <= CEIL_OP(server.disk) &&
+                server.bandwidth - server.free_bandwidth + task.bandwidth <= CEIL_OP(server.bandwidth))
+            {
+                // 修复3：添加资源更新验证
+                if (server.free_cpu >= task.cpu) {
+                    server.free_cpu -= task.cpu;
+                    server.free_gpu -= task.gpu;
+                    server.free_disk -= task.disk;
+                    server.free_bandwidth -= task.bandwidth;
+                    server.tasks.emplace(task);
+                    flag = 1;
+                    break; // 找到可用服务器后跳出循环
+                }
+            }
+        }
+
+        if (flag) continue;
+
+        // 新增服务器分配
+        for (int i = 0; i < serverArray.size(); i++) { // 修复4：改为从0开始遍历
+            // 修复5：添加服务器激活状态检查
+            if (!serverArray[i].status &&
+                    serverArray[i].cpu - serverArray[i].free_cpu + task.cpu <= CEIL_OP(serverArray[i].cpu) &&
+                    serverArray[i].gpu - serverArray[i].free_gpu + task.gpu <= CEIL_OP(serverArray[i].gpu) &&
+                    serverArray[i].disk - serverArray[i].free_disk + task.disk <= CEIL_OP(serverArray[i].disk) &&
+                    serverArray[i].bandwidth - serverArray[i].free_bandwidth + task.bandwidth <= CEIL_OP(serverArray[i].bandwidth))
+            {
+                // 修复6：深度拷贝服务器对象
+                Server newServer = serverArray[i];
+                newServer.free_cpu -= task.cpu;
+                newServer.free_gpu -= task.gpu;
+                newServer.free_disk -= task.disk;
+                newServer.free_bandwidth -= task.bandwidth;
+                newServer.tasks.emplace(task);
+                workingArray.emplace_back(newServer);
+                activateServer(serverArray[i]);
+                flag = 1;
+                break; // 找到可用服务器后跳出循环
+            }
+        }
+
+        // 修复7：处理分配失败的任务
+        if (!flag) {
+            qDebug() << "Task" << task.id << "failed to allocate";
+            failedArray.emplace_back(task); // 添加到失败队列
+        }
+    }
+}
+
+#else
+
+void boardwindow::initDistributeTask(QVector<Task> &taskArr) {
+    for (auto &task: taskArr) {
+        int flag = 0;
+        for (auto &server: workingArray) {
+            if (task.cpu <= CEIL_OP(server.free_cpu) &&
+                task.gpu <= CEIL_OP(server.free_gpu) &&
+                task.disk <= CEIL_OP(server.free_disk) &&
+                task.bandwidth <= CEIL_OP(server.free_bandwidth)) {
+                server.free_cpu -= task.cpu;
+                server.free_gpu -= task.gpu;
+                server.free_disk -= task.disk;
+                server.free_bandwidth -= task.bandwidth;
+                server.tasks.emplace(task); // 工作组中服务器已激活 无需再激活
+                flag = 1;
+            }
+        }
+
+        if (flag) continue;
+        else flag = 0;
+
+        for (int i = (int) workingArray.size(); i < serverArray.size(); i++) {
+            if (task.cpu <= CEIL_OP(serverArray[i].free_cpu) &&
+                task.gpu <= CEIL_OP(serverArray[i].free_gpu) &&
+                task.disk <= CEIL_OP(serverArray[i].free_disk) &&
+                task.bandwidth <= CEIL_OP(serverArray[i].free_bandwidth)) {
+                workingArray.emplace_back(serverArray[i]);
+                workingArray.back().free_cpu -= task.cpu;
+                workingArray.back().free_gpu -= task.gpu;
+                workingArray.back().free_disk -= task.disk;
+                workingArray.back().free_bandwidth -= task.bandwidth;
+                workingArray.back().tasks.emplace(task);
+                activateServer(serverArray[i]); // 新增服务器 需要激活
+                flag = 1;
+            }
+        }
+
+        if (flag) continue;
+
+        todoTasks.emplace(task); // 对所有服务首次分发任务 若有剩余任务添加至to do数组
+    }
+}
+
+#endif
+
+void boardwindow::timeoutSlot500() {
+    /// 更新数据
+    updateDataSlot();
+}
+
+void boardwindow::timeoutSlot2000() {
+    /// 更新任务图表
+    updateTaskChartSlot();
+    /// 更新内存
+    updateMemoChartSlot();
+    /// 更新显存
+    updateGpuChartSlot();
+}
+
+void boardwindow::initTable() {
+    m3 = new QSqlTableModel;
+    m3->setTable("sta");
+    //m3->setFilter("status = 0");
+    // total_weight (下标8列)降序排序
+    m3->setSort(13, Qt::DescendingOrder);
+    m3->select();
+
+    ui->leftTable->setModel(m3);
+    ui->leftTable->verticalHeader()->setHidden(true); // 隐藏行号
+    ui->leftTable->setColumnHidden(1, true);
+    ui->leftTable->setColumnHidden(2, true);
+    ui->leftTable->setColumnHidden(3, true);
+    ui->leftTable->setColumnHidden(4, true);
+    ui->leftTable->setColumnHidden(5, true);
+    ui->leftTable->setColumnHidden(6, true);
+    ui->leftTable->setColumnHidden(12, true);
+    ui->leftTable->setColumnHidden(13, true);
+}
+
+void boardwindow::initDbData() {
+    /// 任务数组初始化
+    QSqlQuery taskQuery("SELECT id, cpu, gpu, disk, bandwidth, start, during, status "
+                        "FROM task WHERE status = 0 ORDER BY start ASC");
+    while (taskQuery.next()) {
+        taskArray.emplace_back(Task{taskQuery.value("id").toString(),
+                                    taskQuery.value("cpu").toInt(),
+                                    taskQuery.value("gpu").toInt(),
+                                    taskQuery.value("disk").toInt(),
+                                    taskQuery.value("bandwidth").toInt(),
+                                    taskQuery.value("start").toLongLong(),
+                                    taskQuery.value("during").toLongLong(),
+                                    taskQuery.value("status").toBool()
+        });
+    }
+
+    /// 服务器数组初始化
+    QSqlQuery serverQuery("SELECT id, ip, port, "
+                          "cpu, gpu, disk, bandwidth, "
+                          "free_cpu, free_gpu, free_disk, free_bandwidth, "
+                          "status "
+                          "FROM sta WHERE status = 0 ORDER BY total_weight DESC");
+
+    while (serverQuery.next()) {
+        serverArray.emplace_back(Server{serverQuery.value("id").toString(),
+                                        serverQuery.value("ip").toString(),
+                                        serverQuery.value("port").toInt(),
+                                        serverQuery.value("cpu").toInt(),
+                                        serverQuery.value("gpu").toInt(),
+                                        serverQuery.value("disk").toInt(),
+                                        serverQuery.value("bandwidth").toInt(),
+                                        OPERATE(serverQuery.value("cpu").toInt()),
+                                        OPERATE(serverQuery.value("gpu").toInt()),
+                                        OPERATE(serverQuery.value("disk").toInt()),
+                                        OPERATE(serverQuery.value("bandwidth").toInt()),
+                                        serverQuery.value("status").toBool(), 0
+        });
+    }
+
+    /// 服务器工作数组初始化
+    if (!serverArray.empty()) {
+        workingArray.emplace_back(serverArray[0]);
+        activateServer(serverArray[0]); // 激活服务器
+    }
+}
+
+void boardwindow::initTaskChart() {
+    taskSeries->append("已完成", finishCnt);
+    taskSeries->append("已失败", failedCnt);
+    taskSeries->append("进行中", ingCnt);
+    taskSeries->append("待处理", todoCnt);
+    taskSeries->setPieSize(1.2);
+    taskSeries->setHoleSize(0.6);
+
+    taskChart->addSeries(taskSeries);
+    taskChart->setTitle("任务完成情况");
+    taskChart->setAnimationOptions(QChart::AllAnimations); // 打开动画
+    taskChart->setLocalizeNumbers(false);
+
+    // 设置图例靠左对齐
+    taskChart->legend()->setAlignment(Qt::AlignLeft);
+
+    // 调整图表边距留出标签空间
+    taskChart->setMargins(QMargins(40, 0, 20, 0)); // 左边界加大
+
+    {// 设置背景??
+        taskChart->setBackgroundBrush(QBrush(Qt::transparent)); // 使QChart背景透明
+        taskChart->setPlotAreaBackgroundVisible(false); // 隐藏绘图区背景
+//        slice->setPen(Qt::NoPen);       // 取消边界线
+//        for (auto slice: taskSeries->slices()) {
+//            slice->setBorderColor(Qt::transparent);
+//        }
+    }
+
+    ui->taskView->setChart(taskChart);
+    ui->taskView->setRenderHint(QPainter::Antialiasing); // 抗锯齿
+}
+
+void boardwindow::initMemoChart() {
+    memoSeries->append("可用", freeMemo);
+    memoSeries->append("已用", occupyMemo);
+    memoSeries->setPieSize(2.0);
+    memoSeries->setHoleSize(0.6);
+
+    memoChart->addSeries(memoSeries);
+    memoChart->setTitle("内存占用");
+    memoChart->setAnimationOptions(QChart::AllAnimations); // 打开动画
+    memoChart->setLocalizeNumbers(false);
+
+    ui->memoView->setChart(memoChart);
+    ui->memoView->setRenderHint(QPainter::Antialiasing); // 抗锯齿
+}
+
+void boardwindow::initGpuChart() {
+    gpuSeries->append("可用", freeGpu);
+    gpuSeries->append("已用", occupyGpu);
+    gpuSeries->setPieSize(2.0);
+    gpuSeries->setHoleSize(0.6);
+
+    gpuChart->addSeries(gpuSeries);
+    gpuChart->setTitle("显存占用");
+    gpuChart->setAnimationOptions(QChart::AllAnimations); // 打开动画
+    gpuChart->setLocalizeNumbers(false);
+
+    ui->gpuView->setChart(gpuChart);
+    ui->gpuView->setRenderHint(QPainter::Antialiasing); // 抗锯齿
+}
+
+
+void boardwindow::updateDataSlot() {
+    /// 更新所有服务器状态
+    for (auto &server: workingArray) {
+        server.last += 500;
+        int flag = 0; // 判断是否有任务完成
+        while (!server.tasks.empty() && server.tasks.top().during <= server.last) {
+            server.free_cpu += server.tasks.top().cpu;
+            server.free_gpu += server.tasks.top().gpu;
+            server.free_disk += server.tasks.top().disk;
+            server.free_bandwidth += server.tasks.top().bandwidth;
+            activateTask(server.tasks.top());
+            server.tasks.pop();
+            flag = 1;
+        }
+
+        if (flag == 0) continue;
+
+        /// 添加待完成任务
+        while (!todoTasks.empty()) { // 贪心策略 由于服务器由性能高到低 前面的任务不能完成 后面服务器大概率也不能完成
+            if (todoTasks.top().start <= server.last) { // 任务理应开始时间若小于服务器已运行时间 判定任务失败
+                server.tasks.emplace(todoTasks.top());
+                server.free_cpu -= todoTasks.top().cpu;
+                server.free_gpu -= todoTasks.top().gpu;
+                server.free_disk -= todoTasks.top().disk;
+                server.free_bandwidth -= todoTasks.top().bandwidth;
+            }
+            //failedArray.emplace_back(todoTasks.top());
+            todoTasks.pop();
+        }
+        /// @这可能是任务2s即没的原因
+        /// @关闭窗口会崩溃
+
+        /// 更新数据库
+        QSqlQuery updateServer;
+        updateServer.prepare(
+                "UPDATE sta SET "
+                "free_cpu = ?, free_gpu = ?, "
+                "free_disk = ?, free_bandwidth = ? "
+                "WHERE id = ?"
+        );
+        updateServer.addBindValue(server.free_cpu);
+        updateServer.addBindValue(server.free_gpu);
+        updateServer.addBindValue(server.free_disk);
+        updateServer.addBindValue(server.free_bandwidth);
+        updateServer.addBindValue(server.id);
+        if (!updateServer.exec()) {
+            qDebug() << "database update failed!" << updateServer.lastError().text();
+        }
+
+    }
+
+    /// 更新表格
+    m3->select();
+}
+
+void boardwindow::updateTaskChartData() {
+    QSqlQuery countQuery("SELECT COUNT(*) FROM task");
+    if (countQuery.next()) {
+        taskCnt = countQuery.value(0).toInt();
+    }
+
+    if (!countQuery.exec()) {
+        qDebug() << "Count query failed:" << countQuery.lastError();
+    }
+
+    QSqlQuery finishedQuery("SELECT COUNT(*) FROM task WHERE status = 1");
+    if (finishedQuery.next()) {
+        finishCnt = finishedQuery.value(0).toInt();
+    }
+
+    if (!finishedQuery.exec()) {
+        qDebug() << "Count query failed:" << countQuery.lastError();
+    }
+
+    todoCnt = (int) todoTasks.size();
+    failedCnt = (int) failedArray.size();
+    ingCnt = taskCnt - finishCnt - failedCnt - todoCnt;
+}
+
+void boardwindow::updateTaskChartSlot() {
+    /// 更新数据
+    updateTaskChartData();
+
+    ui->finishTaskLabel->setText("完成任务数：" + QString::number(finishCnt));
+    ui->todoTaskLabel->setText("待完成任务数：" + QString::number(todoCnt));
+    ui->failTaskLabel->setText("失败任务数：" + QString::number(failedCnt));
+    ui->finishTaskLabel->setAlignment(Qt::AlignCenter);
+    ui->todoTaskLabel->setAlignment(Qt::AlignCenter);
+    ui->failTaskLabel->setAlignment(Qt::AlignCenter);
+
+    QList<QPieSlice *> slices = taskSeries->slices();
+    if (slices.empty()) return;
+    int flag = 0;
+    if (slices[0]->value() != finishCnt) slices[0]->setValue(finishCnt);
+    else ++flag;
+    if (slices[1]->value() != failedCnt) slices[1]->setValue(failedCnt);
+    else ++flag;
+    if (slices[2]->value() != ingCnt) slices[2]->setValue(ingCnt);
+    else ++flag;
+    if (slices[3]->value() != todoCnt) slices[3]->setValue(todoCnt);
+    else ++flag;
+    if (flag == 4) fla2000TC = false;
+}
+
+void boardwindow::updateMemoChartData() {
+    QSqlQuery sumQuery;
+    sumQuery.prepare("SELECT SUM(free_cpu), SUM(cpu) FROM sta WHERE status = 1");
+
+    if (sumQuery.exec() && sumQuery.next()) {
+        freeMemo = sumQuery.value(0).isNull() ? 0 : sumQuery.value(0).toInt();
+        allMemo = sumQuery.value(1).isNull() ? 0 : sumQuery.value(1).toInt();
+    } else
+        qDebug() << "Memo query failed:" << sumQuery.lastError();
+
+    occupyMemo = allMemo - freeMemo;
+}
+
+void boardwindow::updateMemoChartSlot() {
+    updateMemoChartData(); // 更新数据
+
+    ui->memoLabel->setText("内存：" + QString::number(occupyMemo) + " MB");
+    ui->memoLabel->setAlignment(Qt::AlignCenter);
+
+    QList<QPieSlice *> slices = memoSeries->slices();
+    if (slices.empty()) return;
+    int flag = 0;
+    if (slices[0]->value() != freeMemo) slices[0]->setValue(freeMemo);
+    else ++flag;
+    if (slices[1]->value() != occupyMemo) slices[1]->setValue(occupyMemo);
+    else ++flag;
+    if (flag == 2) fla2000MC = false;
+}
+
+void boardwindow::updateGpuChartData() {
+    QSqlQuery sumQuery;
+    sumQuery.prepare("SELECT SUM(free_gpu), SUM(gpu) FROM sta WHERE status = 1");
+
+    if (sumQuery.exec() && sumQuery.next()) {
+        freeGpu = sumQuery.value(0).isNull() ? 0 : sumQuery.value(0).toInt();
+        allGpu = sumQuery.value(1).isNull() ? 0 : sumQuery.value(1).toInt();
+    } else
+        qDebug() << "Gpu query failed:" << sumQuery.lastError();
+
+    occupyGpu = allGpu - freeGpu;
+}
+
+void boardwindow::updateGpuChartSlot() {
+    updateGpuChartData(); // 更新数据
+
+    ui->gpuLabel->setText("显存：" + QString::number(occupyGpu) + " MB");
+    ui->gpuLabel->setAlignment(Qt::AlignCenter);
+
+    QList<QPieSlice *> slices = gpuSeries->slices();
+    if (slices.empty()) return;
+    int flag = 0;
+    if (slices[0]->value() != freeGpu) slices[0]->setValue(freeGpu);
+    else ++flag;
+    if (slices[1]->value() != occupyGpu) slices[1]->setValue(occupyGpu);
+    else ++flag;
+    if (flag == 2) fla2000GC = false;
+}
+
+void boardwindow::activateServer(Server &ser) {
+    // ser.status = true;
+    QSqlQuery updateServer;
+    updateServer.prepare("UPDATE sta SET status = ? WHERE id = ?");
+    updateServer.addBindValue(1);
+    updateServer.addBindValue(ser.id);
+    if (!updateServer.exec()) {
+        qDebug() << "servers:sta update failed!" << updateServer.lastError().text();
+    }
+}
+
+void boardwindow::activateTask(const Task &tas) {
+
+    QSqlQuery updateTask;
+    updateTask.prepare("UPDATE task SET status = ? WHERE id = ?");
+    updateTask.addBindValue(1); //在数据库中更新任务状态
+    updateTask.addBindValue(tas.id);
+    if (!updateTask.exec()) {
+        qDebug() << "servers:task update failed!" << updateTask.lastError().text();
+    }
+}
+
+imitatewindow.cpp:
+
+#include "imitatewindow.h"
+#include "ui_imitatewindow.h"
+
+
+imitatewindow::imitatewindow(QWidget *parent) :
+        QMainWindow(parent), ui(new Ui::imitatewindow) {
+    ui->setupUi(this);
+
+}
+
+imitatewindow::~imitatewindow() {
+    delete ui;
+}
+
+void imitatewindow::on_clcButton_clicked() {
+    ui->cntSerEdit->clear();
+    ui->cntTasEdit->clear();
+}
+
+void imitatewindow::on_importButton_clicked() {
+    QString cntSer = ui->cntSerEdit->text();
+    QString cntTas = ui->cntTasEdit->text();
+    if (cntSer.isEmpty() || cntTas.isEmpty()) {
+        qDebug() << "number is empty";
+        return;
+    }
+
+    serverNum = cntSer.toInt();
+    taskNum = cntTas.toInt();
+
+    int flagSer = 0;
+    for (int i = 0; i < serverNum; i++) {
+        flagSer += insertRandomServer();
+    }
+
+    qDebug() << QString::number(flagSer) + " servers added to Table:sta";
+    if (flagSer != serverNum) {
+        qDebug() << QString::number(serverNum - flagSer) + " servers insert failed";
+    }
+
+    int flagTas = 0;
+    for (int i = 0; i < taskNum; i++) {
+        flagTas += insertRandomTask();
+    }
+
+    qDebug() << QString::number(flagTas) + " tasks added to Table:task";
+    if (flagTas != taskNum) {
+        qDebug() << QString::number(taskNum - flagTas) + " tasks insert failed";
+    }
+
+    this->close();
+}
+
+QString imitatewindow::generateRandomID() {
+    const QString charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    QString id;
+    for (int i = 0; i < LENGTH; i++) {
+        id.append(charset.at(QRandomGenerator::global()->bounded(charset.length())));
+    }
+    return id;
+}
+
+QString imitatewindow::generateRandomIP() {
+    return QString("%1.%2.%3.%4")
+            .arg(QRandomGenerator::global()->bounded(0, 256))
+            .arg(QRandomGenerator::global()->bounded(0, 256))
+            .arg(QRandomGenerator::global()->bounded(0, 256))
+            .arg(QRandomGenerator::global()->bounded(0, 256));
+}
+
+int imitatewindow::insertRandomServer() {
+    QSqlQuery query;
+    query.prepare("INSERT INTO sta (id, ip, port, cpu, gpu, disk, bandwidth, "
+                  "free_cpu, free_gpu, free_disk, free_bandwidth, "
+                  "status, power) "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+    QString id = generateRandomID();
+    QString ip = generateRandomIP();
+    int port = QRandomGenerator::global()->bounded(0, 49152); // 0~49151
+    int cpu = 1024 * QRandomGenerator::global()->bounded(1, 65); // 1~64
+    int gpu = 1024 * QRandomGenerator::global()->bounded(1, 97); // 1~96
+    int disk = QRandomGenerator::global()->bounded(100, 10000); // 100~9999
+    int bandwidth = QRandomGenerator::global()->bounded(20, 1025); // 20~1024
+
+    int power = QRandomGenerator::global()->bounded(50, 700);
+
+    query.addBindValue(id);
+    query.addBindValue(ip);
+    query.addBindValue(port);
+    query.addBindValue(cpu);
+    query.addBindValue(gpu);
+    query.addBindValue(disk);
+    query.addBindValue(bandwidth);
+
+    query.addBindValue(cpu);
+    query.addBindValue(gpu);
+    query.addBindValue(disk);
+    query.addBindValue(bandwidth);
+
+    query.addBindValue(0);
+    query.addBindValue(power);
+
+    if (!query.exec()) return 0;
+    return 1;
+}
+
+int imitatewindow::insertRandomTask() {
+    QSqlQuery query;
+    query.prepare("INSERT INTO task (id, cpu, gpu, disk, bandwidth, "
+                  "start, during, status) "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    QString id = generateRandomID();
+    int cpu = QRandomGenerator::global()->bounded(1, 1024 * 1); //
+    int gpu = QRandomGenerator::global()->bounded(1, 1024 * 2); //
+    int disk = QRandomGenerator::global()->bounded(0, 100);
+    int bandwidth = QRandomGenerator::global()->bounded(1, 512); // 20~1024
+
+    long long start = QRandomGenerator::global()->bounded(0, (int) (100 * 1e3)); // 0 ~ 100 s
+    int during = QRandomGenerator::global()->bounded(500, (int) (10 * 1e3)); // 0.5 ~ 10 s
+
+    query.addBindValue(id);
+    query.addBindValue(cpu);
+    query.addBindValue(gpu);
+    query.addBindValue(disk);
+    query.addBindValue(bandwidth);
+
+    query.addBindValue(start);
+    query.addBindValue(during);
+    query.addBindValue(0);
+
+    if (!query.exec()) return 0;
+    return 1;
+}
+
+void imitatewindow::on_clearButton_clicked() {
+    QSqlQuery query;
+    if (query.exec("DELETE FROM sers")) {
+        qDebug() << "sers table cleared, affected rows:" << query.numRowsAffected();
+    } else
+        qDebug() << "Clear sers failed:" << query.lastError().text();
+
+    if (query.exec("DELETE FROM sta")) {
+        qDebug() << "sta table cleared, affected rows:" << query.numRowsAffected();
+    } else
+        qDebug() << "Clear sta failed:" << query.lastError().text();
+
+    if (query.exec("DELETE FROM task")) {
+        qDebug() << "task table cleared, affected rows:" << query.numRowsAffected();
+    } else
+        qDebug() << "Clear task failed:" << query.lastError().text();
+}
+
+mainwindow.ui:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>mainwindow</class>
+ <widget class="QMainWindow" name="mainwindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>600</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>900</width>
+    <height>600</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>mainwindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QGroupBox" name="menuBox">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>800</width>
+      <height>70</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string/>
+    </property>
+    <widget class="QLabel" name="logoLabel">
+     <property name="geometry">
+      <rect>
+       <x>50</x>
+       <y>15</y>
+       <width>40</width>
+       <height>40</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>LOGO</string>
+     </property>
+    </widget>
+    <widget class="QWidget" name="layoutWidget">
+     <property name="geometry">
+      <rect>
+       <x>390</x>
+       <y>10</y>
+       <width>391</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>30</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="allButton">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>查看全部</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="dashButton">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>仪表盘</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="distriButton">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>任务分配</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QPushButton" name="imitateButton">
+     <property name="geometry">
+      <rect>
+       <x>210</x>
+       <y>20</y>
+       <width>111</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>导入模拟数据</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="pageWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>80</y>
+      <width>791</width>
+      <height>521</height>
+     </rect>
+    </property>
+    <widget class="QPushButton" name="addPushButton">
+     <property name="geometry">
+      <rect>
+       <x>40</x>
+       <y>10</y>
+       <width>261</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>添加服务器</string>
+     </property>
+    </widget>
+    <widget class="QWidget" name="layoutWidget_2">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>0</y>
+       <width>451</width>
+       <height>511</height>
+      </rect>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="spacing">
+       <number>25</number>
+      </property>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="storBox">
+        <property name="title">
+         <string/>
+        </property>
+        <widget class="QProgressBar" name="storProBar">
+         <property name="geometry">
+          <rect>
+           <x>70</x>
+           <y>70</y>
+           <width>120</width>
+           <height>25</height>
+          </rect>
+         </property>
+         <property name="value">
+          <number>58</number>
+         </property>
+        </widget>
+        <widget class="QLabel" name="storLabel">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>10</y>
+           <width>150</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <family>Consolas</family>
+           <pointsize>16</pointsize>
+           <italic>true</italic>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Storage</string>
+         </property>
+        </widget>
+        <widget class="QFrame" name="storFrame">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>113</y>
+           <width>212</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <widget class="QWidget" name="layoutWidget_3">
+          <property name="geometry">
+           <rect>
+            <x>30</x>
+            <y>0</y>
+            <width>161</width>
+            <height>18</height>
+           </rect>
+          </property>
+          <layout class="QHBoxLayout" name="storLayout">
+           <item>
+            <widget class="QLabel" name="storgbLabel">
+             <property name="text">
+              <string>GiB</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="diskLabel">
+             <property name="text">
+              <string>Disk</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="vituLabel">
+             <property name="text">
+              <string>GiBSwap</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QGroupBox" name="machBox">
+        <property name="title">
+         <string/>
+        </property>
+        <widget class="QProgressBar" name="memoProBar">
+         <property name="geometry">
+          <rect>
+           <x>70</x>
+           <y>70</y>
+           <width>120</width>
+           <height>25</height>
+          </rect>
+         </property>
+         <property name="value">
+          <number>69</number>
+         </property>
+        </widget>
+        <widget class="QLabel" name="machLabel">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>10</y>
+           <width>150</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <family>Consolas</family>
+           <pointsize>16</pointsize>
+           <italic>true</italic>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Machine</string>
+         </property>
+        </widget>
+        <widget class="QFrame" name="machFrame">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>113</y>
+           <width>211</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <widget class="QWidget" name="layoutWidget_4">
+          <property name="geometry">
+           <rect>
+            <x>30</x>
+            <y>10</y>
+            <width>161</width>
+            <height>18</height>
+           </rect>
+          </property>
+          <layout class="QHBoxLayout" name="machLayout">
+           <item>
+            <widget class="QLabel" name="memogbLabel">
+             <property name="text">
+              <string>Gib</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="styLabel">
+             <property name="text">
+              <string>DDR3</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="procsLabel">
+             <property name="text">
+              <string>Procs</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QGroupBox" name="grapBox">
+        <property name="title">
+         <string/>
+        </property>
+        <widget class="QGraphicsView" name="grapView">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>10</y>
+           <width>431</width>
+           <height>131</height>
+          </rect>
+         </property>
+        </widget>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QGroupBox" name="clocBox">
+        <property name="title">
+         <string/>
+        </property>
+        <widget class="QFrame" name="clocFrame">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>40</y>
+           <width>181</width>
+           <height>80</height>
+          </rect>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <widget class="QWidget" name="layoutWidget_5">
+          <property name="geometry">
+           <rect>
+            <x>20</x>
+            <y>20</y>
+            <width>134</width>
+            <height>42</height>
+           </rect>
+          </property>
+          <layout class="QHBoxLayout" name="duriLayout">
+           <item>
+            <widget class="QLabel" name="hLabel">
+             <property name="minimumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Hours</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="mLabel">
+             <property name="minimumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Mins</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="sLabel">
+             <property name="minimumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Seconds</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="procBox">
+        <property name="title">
+         <string/>
+        </property>
+        <widget class="QProgressBar" name="cpuProBar">
+         <property name="geometry">
+          <rect>
+           <x>70</x>
+           <y>70</y>
+           <width>120</width>
+           <height>25</height>
+          </rect>
+         </property>
+         <property name="value">
+          <number>15</number>
+         </property>
+        </widget>
+        <widget class="QLabel" name="procLabel">
+         <property name="geometry">
+          <rect>
+           <x>30</x>
+           <y>10</y>
+           <width>150</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <family>Consolas</family>
+           <pointsize>16</pointsize>
+           <italic>true</italic>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Processor</string>
+         </property>
+        </widget>
+        <widget class="QFrame" name="procFrame">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>113</y>
+           <width>212</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <widget class="QWidget" name="layoutWidget_6">
+          <property name="geometry">
+           <rect>
+            <x>30</x>
+            <y>10</y>
+            <width>161</width>
+            <height>18</height>
+           </rect>
+          </property>
+          <layout class="QHBoxLayout" name="procLayout">
+           <item>
+            <widget class="QLabel" name="coreLabel">
+             <property name="text">
+              <string>Cores</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="ghzLabel">
+             <property name="text">
+              <string>GHz</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="bitLabel">
+             <property name="text">
+              <string>64-bit</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QTableView" name="tableView">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>80</y>
+       <width>300</width>
+       <height>430</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="allWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>70</y>
+      <width>791</width>
+      <height>521</height>
+     </rect>
+    </property>
+    <widget class="QTableView" name="allTableView">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>20</y>
+       <width>741</width>
+       <height>471</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <zorder>menuBox</zorder>
+   <zorder>allWidget</zorder>
+   <zorder>pageWidget</zorder>
+  </widget>
+  <action name="actiondsA">
+   <property name="text">
+    <string>dsA</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+
+
+addwindow.ui:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>addwindow</class>
+    <widget class="QMainWindow" name="addwindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>450</width>
+                <height>520</height>
+            </rect>
+        </property>
+        <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>45</horstretch>
+                <verstretch>0</verstretch>
+            </sizepolicy>
+        </property>
+        <property name="minimumSize">
+            <size>
+                <width>450</width>
+                <height>520</height>
+            </size>
+        </property>
+        <property name="maximumSize">
+            <size>
+                <width>450</width>
+                <height>520</height>
+            </size>
+        </property>
+        <property name="windowTitle">
+            <string>addwindow</string>
+        </property>
+        <widget class="QWidget" name="centralwidget">
+            <widget class="QGroupBox" name="buttBox">
+                <property name="geometry">
+                    <rect>
+                        <x>5</x>
+                        <y>360</y>
+                        <width>440</width>
+                        <height>146</height>
+                    </rect>
+                </property>
+                <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                    </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                    <size>
+                        <width>440</width>
+                        <height>0</height>
+                    </size>
+                </property>
+                <property name="maximumSize">
+                    <size>
+                        <width>440</width>
+                        <height>16777215</height>
+                    </size>
+                </property>
+                <property name="title">
+                    <string/>
+                </property>
+                <widget class="QPushButton" name="saveButton">
+                    <property name="geometry">
+                        <rect>
+                            <x>270</x>
+                            <y>50</y>
+                            <width>75</width>
+                            <height>40</height>
+                        </rect>
+                    </property>
+                    <property name="font">
+                        <font>
+                            <pointsize>14</pointsize>
+                        </font>
+                    </property>
+                    <property name="text">
+                        <string>保存</string>
+                    </property>
+                </widget>
+                <widget class="QPushButton" name="clearButton">
+                    <property name="geometry">
+                        <rect>
+                            <x>100</x>
+                            <y>50</y>
+                            <width>75</width>
+                            <height>40</height>
+                        </rect>
+                    </property>
+                    <property name="font">
+                        <font>
+                            <pointsize>14</pointsize>
+                        </font>
+                    </property>
+                    <property name="text">
+                        <string>清空</string>
+                    </property>
+                </widget>
+            </widget>
+            <widget class="QGroupBox" name="inputBox">
+                <property name="geometry">
+                    <rect>
+                        <x>5</x>
+                        <y>5</y>
+                        <width>440</width>
+                        <height>350</height>
+                    </rect>
+                </property>
+                <property name="minimumSize">
+                    <size>
+                        <width>440</width>
+                        <height>350</height>
+                    </size>
+                </property>
+                <property name="maximumSize">
+                    <size>
+                        <width>440</width>
+                        <height>350</height>
+                    </size>
+                </property>
+                <property name="title">
+                    <string/>
+                </property>
+                <widget class="QWidget" name="layoutWidget">
+                    <property name="geometry">
+                        <rect>
+                            <x>80</x>
+                            <y>70</y>
+                            <width>291</width>
+                            <height>142</height>
+                        </rect>
+                    </property>
+                    <layout class="QFormLayout" name="formLayout">
+                        <property name="horizontalSpacing">
+                            <number>30</number>
+                        </property>
+                        <property name="verticalSpacing">
+                            <number>10</number>
+                        </property>
+                        <item row="0" column="0">
+                            <widget class="QLabel" name="idLabel">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <pointsize>14</pointsize>
+                                        <bold>false</bold>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>ID</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="0" column="1">
+                            <widget class="QLineEdit" name="idLineEdit">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="0">
+                            <widget class="QLabel" name="ipLabel">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <pointsize>14</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>地址</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="1">
+                            <widget class="QLineEdit" name="ipLineEdit">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="0">
+                            <widget class="QLabel" name="portLabel">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <pointsize>14</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>端口</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="1">
+                            <widget class="QLineEdit" name="portLineEdit">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </widget>
+            </widget>
+        </widget>
+    </widget>
+    <resources/>
+    <connections/>
+</ui>
+
+boardwindow.h:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>addwindow</class>
+    <widget class="QMainWindow" name="addwindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>450</width>
+                <height>520</height>
+            </rect>
+        </property>
+        <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>45</horstretch>
+                <verstretch>0</verstretch>
+            </sizepolicy>
+        </property>
+        <property name="minimumSize">
+            <size>
+                <width>450</width>
+                <height>520</height>
+            </size>
+        </property>
+        <property name="maximumSize">
+            <size>
+                <width>450</width>
+                <height>520</height>
+            </size>
+        </property>
+        <property name="windowTitle">
+            <string>addwindow</string>
+        </property>
+        <widget class="QWidget" name="centralwidget">
+            <widget class="QGroupBox" name="buttBox">
+                <property name="geometry">
+                    <rect>
+                        <x>5</x>
+                        <y>360</y>
+                        <width>440</width>
+                        <height>146</height>
+                    </rect>
+                </property>
+                <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                    </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                    <size>
+                        <width>440</width>
+                        <height>0</height>
+                    </size>
+                </property>
+                <property name="maximumSize">
+                    <size>
+                        <width>440</width>
+                        <height>16777215</height>
+                    </size>
+                </property>
+                <property name="title">
+                    <string/>
+                </property>
+                <widget class="QPushButton" name="saveButton">
+                    <property name="geometry">
+                        <rect>
+                            <x>270</x>
+                            <y>50</y>
+                            <width>75</width>
+                            <height>40</height>
+                        </rect>
+                    </property>
+                    <property name="font">
+                        <font>
+                            <pointsize>14</pointsize>
+                        </font>
+                    </property>
+                    <property name="text">
+                        <string>保存</string>
+                    </property>
+                </widget>
+                <widget class="QPushButton" name="clearButton">
+                    <property name="geometry">
+                        <rect>
+                            <x>100</x>
+                            <y>50</y>
+                            <width>75</width>
+                            <height>40</height>
+                        </rect>
+                    </property>
+                    <property name="font">
+                        <font>
+                            <pointsize>14</pointsize>
+                        </font>
+                    </property>
+                    <property name="text">
+                        <string>清空</string>
+                    </property>
+                </widget>
+            </widget>
+            <widget class="QGroupBox" name="inputBox">
+                <property name="geometry">
+                    <rect>
+                        <x>5</x>
+                        <y>5</y>
+                        <width>440</width>
+                        <height>350</height>
+                    </rect>
+                </property>
+                <property name="minimumSize">
+                    <size>
+                        <width>440</width>
+                        <height>350</height>
+                    </size>
+                </property>
+                <property name="maximumSize">
+                    <size>
+                        <width>440</width>
+                        <height>350</height>
+                    </size>
+                </property>
+                <property name="title">
+                    <string/>
+                </property>
+                <widget class="QWidget" name="layoutWidget">
+                    <property name="geometry">
+                        <rect>
+                            <x>80</x>
+                            <y>70</y>
+                            <width>291</width>
+                            <height>142</height>
+                        </rect>
+                    </property>
+                    <layout class="QFormLayout" name="formLayout">
+                        <property name="horizontalSpacing">
+                            <number>30</number>
+                        </property>
+                        <property name="verticalSpacing">
+                            <number>10</number>
+                        </property>
+                        <item row="0" column="0">
+                            <widget class="QLabel" name="idLabel">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <pointsize>14</pointsize>
+                                        <bold>false</bold>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>ID</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="0" column="1">
+                            <widget class="QLineEdit" name="idLineEdit">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="0">
+                            <widget class="QLabel" name="ipLabel">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <pointsize>14</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>地址</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="1" column="1">
+                            <widget class="QLineEdit" name="ipLineEdit">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="0">
+                            <widget class="QLabel" name="portLabel">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="font">
+                                    <font>
+                                        <pointsize>14</pointsize>
+                                    </font>
+                                </property>
+                                <property name="text">
+                                    <string>端口</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="1">
+                            <widget class="QLineEdit" name="portLineEdit">
+                                <property name="minimumSize">
+                                    <size>
+                                        <width>0</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                                <property name="maximumSize">
+                                    <size>
+                                        <width>16777215</width>
+                                        <height>40</height>
+                                    </size>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </widget>
+            </widget>
+        </widget>
+    </widget>
+    <resources/>
+    <connections/>
+</ui>
+
+imitatewindow.ui:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>imitatewindow</class>
+ <widget class="QMainWindow" name="imitatewindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>240</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>600</width>
+    <height>240</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>600</width>
+    <height>240</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>imitatewindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>160</y>
+      <width>446</width>
+      <height>52</height>
+     </rect>
+    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="clearButton">
+       <property name="minimumSize">
+        <size>
+         <width>140</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>140</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>清空原数据</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>60</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="clcButton">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>清空</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>60</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="importButton">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>导入</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>60</y>
+      <width>466</width>
+      <height>42</height>
+     </rect>
+    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="cntSerLabel">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>服务器数量</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="cntSerEdit">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>60</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="cntTasLabel">
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>80</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>任务数量</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="cntTasEdit">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>40</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+
