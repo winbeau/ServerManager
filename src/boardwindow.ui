@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>boardwindow</class>
+ <widget class="QMainWindow" name="boardwindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1200</width>
+    <height>800</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1200</width>
+    <height>800</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>boardwindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="minimumSize">
+    <size>
+     <width>1200</width>
+     <height>800</height>
+    </size>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>1200</width>
+     <height>800</height>
+    </size>
+   </property>
+   <widget class="QWidget" name="rightWidget" native="true">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>10</y>
+      <width>580</width>
+      <height>660</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>580</width>
+      <height>660</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>580</width>
+      <height>650</height>
+     </size>
+    </property>
+    <widget class="QWidget" name="">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>514</width>
+       <height>644</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <item>
+       <widget class="QChartView" name="taskView">
+        <property name="minimumSize">
+         <size>
+          <width>510</width>
+          <height>300</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>510</width>
+          <height>300</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QChartView" name="memoView">
+          <property name="minimumSize">
+           <size>
+            <width>250</width>
+            <height>330</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>330</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QChartView" name="gpuView">
+          <property name="minimumSize">
+           <size>
+            <width>250</width>
+            <height>330</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>330</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="statWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>690</y>
+      <width>1180</width>
+      <height>100</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>1180</width>
+      <height>100</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>1180</width>
+      <height>100</height>
+     </size>
+    </property>
+    <widget class="QWidget" name="">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>1201</width>
+       <height>52</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>5</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="memoLabel">
+        <property name="minimumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <kerning>false</kerning>
+         </font>
+        </property>
+        <property name="text">
+         <string>内存</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="gpuLabel">
+        <property name="minimumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>显存</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="finishTaskLabel">
+        <property name="minimumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>完成任务数</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="todoTaskLabel">
+        <property name="minimumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>待完成任务</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="failTaskLabel">
+        <property name="minimumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>235</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>失败任务数</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+   <widget class="QTableView" name="leftTable">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>20</y>
+      <width>580</width>
+      <height>645</height>
+     </rect>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QChartView</class>
+   <extends>QGraphicsView</extends>
+   <header location="global">qchartview.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

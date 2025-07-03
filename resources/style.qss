@@ -1,0 +1,214 @@
+/* mainwindow -dashboard*/
+
+mainwindow #centralwidget {
+    background: rgb(9, 12, 17);
+}
+
+mainwindow #menuBox {
+    border: 0px solid rgb(0, 0, 0);
+    background-color: rgb(22, 27, 33);
+}
+
+mainwindow #menuBox QPushButton {
+    alignment: center;
+    max-height: 35px;
+    min-height: 35px;
+    color: rgb(255, 255, 255);
+    font:200 20px;
+    background-color: rgb(46, 51, 57);
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 15px;
+}
+
+mainwindow #menuBox #dashButton {
+    color: rgb(0, 0, 0);
+    background-color: rgb(91, 221, 138);
+    border-color: rgb(91, 221, 138);
+}
+
+mainwindow #menuBox #imitateButton {
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 5px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+mainwindow #servBox {
+    border: 0px solid rgb(0, 0, 0);
+    border-radius: 0px;
+}
+
+mainwindow #pageWidget QGroupBox {
+    color: rgb(255, 255, 255);
+    background-color: rgb(255, 255, 255);
+    border-color: rgb(255, 255, 255);
+    border-radius: 25px;
+}
+
+mainwindow #procFrame {
+    bottom: 0px;
+    max-height: 40px;
+    min-height: 40px;
+    border: 0px solid rgb(255, 255, 255);
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+    color: rgb(0, 0, 0);
+    font: 100 20px;
+    background-color: rgb(230, 233, 255);
+}
+
+mainwindow #machFrame {
+    bottom: 0px;
+    max-height: 40px;
+    min-height: 40px;
+    border: 0px solid rgb(255, 255, 255);
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+    color: rgb(0, 0, 0);
+    font: 100 20px;
+    background-color: rgb(255, 227, 227);
+}
+
+mainwindow #storFrame {
+    bottom: 0px;
+    max-height: 40px;
+    min-height: 40px;
+    border: 0px solid rgb(255, 255, 255);
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+    color: rgb(0, 0, 0);
+    font: 100 20px;
+    background-color: rgb(200, 242, 225);
+}
+
+
+mainwindow #addPushButton {
+    alignment: center;
+    max-height: 40px;
+    min-height: 40px;
+    color: rgb(0, 0, 0);
+    font:200 20px;
+    background-color: rgb(91, 221, 138);
+    border: 1px solid rgb(91, 221, 138);
+    border-radius: 15px;
+}
+
+/* mainwindow -all */
+
+mainwindow QTableView {
+    color: rgb(255, 255, 255); /* ÎÄ×ÖÑÕÉ« */
+    background: rgb(22, 27, 33);
+    gridline-color: transparent;
+    border: none;
+}
+
+QHeaderView::section {
+    background-color: rgb(22, 27, 33);
+    color: rgb(255, 255, 255);
+    padding: 4px;
+    border: none;
+}
+
+QScrollBar:vertical, QScrollBar:horizontal {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+}
+
+QProgressBar {
+    border-radius: 3px;
+    background-color: #e0e0e0;
+    text-align: center;
+    max-height: 10px;
+    min-height: 10px;
+}
+QProgressBar::chunk {
+    border-radius: 3px;
+    background-color: #4CAF50;
+}
+
+/* addwindow */
+
+addwindow #inputBox QLabel {
+    color: rgb(255, 255, 255);
+    font: 100 20px;
+}
+
+addwindow #inputBox QLineEdit {
+    color: rgb(255, 255, 255);
+    font: 100 20px;
+    background-color: rgb(46, 51, 57);
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 10px;
+}
+
+addwindow #buttBox QPushButton {
+    alignment: center;
+    max-height: 35px;
+    min-height: 35px;
+    color: rgb(255, 255, 255);
+    font:200 20px;
+    background-color: rgb(46, 51, 57);
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 15px;
+}
+
+addwindow #buttBox #saveButton {
+    color: rgb(0, 0, 0);
+    background-color: rgb(91, 221, 138);
+    border-color: rgb(91, 221, 138);
+}
+
+/* imitatewindow */
+
+imitatewindow #centralwidget {
+    background: rgb(9, 12, 17);
+}
+
+
+imitatewindow QLabel {
+    color: rgb(255, 255, 255);
+    font: 200 20px;
+}
+
+imitatewindow QLineEdit {
+    color: rgb(255, 255, 255);
+    font: 200 20px;
+    background-color: rgb(46, 51, 57);
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 10px;
+}
+
+imitatewindow QPushButton {
+    alignment: center;
+    max-height: 35px;
+    min-height: 35px;
+    color: rgb(255, 255, 255);
+    font:500 20px;
+    background-color: rgb(46, 51, 57);
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 15px;
+}
+
+imitatewindow #clearButton {
+    border-radius: 10px;
+}
+
+
+/* boardwindow */
+boardwindow #centralwidget {
+    background: rgb(22, 27, 33);
+}
+
+boardwindow QLabel {
+    alignment: center;
+    max-height: 50px;
+    min-height: 50px;
+    max-width: 200px;
+    min-width: 200px;
+    color: rgb(255, 255, 255);
+    font:200 20px;
+    background-color: rgb(46, 51, 57);
+    border: 1px solid rgb(46, 51, 57);
+    border-radius: 7px;
+}
