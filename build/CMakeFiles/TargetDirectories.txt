@@ -1,0 +1,5 @@
+/home/winbeau/ServerManager/build/CMakeFiles/ServerManager.dir
+/home/winbeau/ServerManager/build/CMakeFiles/edit_cache.dir
+/home/winbeau/ServerManager/build/CMakeFiles/rebuild_cache.dir
+/home/winbeau/ServerManager/build/CMakeFiles/ServerManager_autogen_timestamp_deps.dir
+/home/winbeau/ServerManager/build/CMakeFiles/ServerManager_autogen.dir

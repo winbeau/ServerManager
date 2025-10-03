@@ -9,7 +9,7 @@
 #include <QVector>
 #include <QString>
 #include <QTime>
-#include <QTImer>
+#include <QTimer>
 #include <QRandomGenerator>
 #include <set>
 #include <queue>

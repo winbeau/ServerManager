@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-set(CMAKE_PREFIX_PATH "D:/QtStructure/6.5.3/mingw_64")
+# set(CMAKE_PREFIX_PATH "D:/QtStructure/6.5.3/mingw_64")
 set(SRC_DIR "./src")  # 源文件目录
 set(RES_FILES "${CMAKE_SOURCE_DIR}/resources/resources.qrc") # 资源文件
 
